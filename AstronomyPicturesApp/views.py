@@ -1,17 +1,15 @@
+
 from django.http import HttpResponse
-from django.shortcuts import render
-from requests import delete
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
-from rest_framework.renderers import JSONRenderer
 from .models import Picture
 from .serializers import PictureSerializer
-from rest_framework.pagination import PageNumberPagination
-import django_filters
+from rest_framework.response import Response
+from rest_framework.authentication import SessionAuthentication,BasicAuthentication,TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
-
+from rest_framework import mixins
+from rest_framework.filters import SearchFilter,OrderingFilter
 
 
 """
@@ -29,34 +27,23 @@ params={
 }
 
 response=requests.get(API_URL,params=params)
-json_data=json.loads(response.text)"""
+json_data=json.loads(response.text)
+"""
 
-class ResponsePagination(PageNumberPagination):
-    page_query_param='p'
-    page_size=10
-    page_size_query_param='page_size'
-    max_page_size=10
+class GenericAPIView(generics.GenericAPIView,mixins.ListModelMixin,mixins.CreateModelMixin,mixins.UpdateModelMixin,mixins.DestroyModelMixin,mixins.RetrieveModelMixin):
+    
+    serializer_class=PictureSerializer
+    queryset=Picture.objects.all()
+    filter_backends=(SearchFilter,OrderingFilter)
+    search_fields=('id','title','url','hdurl','explanation')
 
-class PictureFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(lookup_expr='iexact')
-
-    class Meta:
-        model = Picture
-        fields = ['price', 'release_date']
-
-# Create your views here.
-class PictureAPIView(APIView):
-    def get(self,request):
-        pictures=Picture.objects.all()
-        #post=
-        #pagination
-        #paginator=ResponsePagination()
-        #results=paginator.paginate_queryset(posts,request)
-        serializer=PictureSerializer(pictures,many=True)
-        return Response(serializer.data)
-
-    def post(self,request):
-        
+    authentication_classes=[SessionAuthentication,BasicAuthentication]
+    #authentication_classes=[TokenAuthentication]
+    permission_classes=[IsAuthenticated]
+    
+    def get(self,request):  
+        return self.list(request)
+    def post(self,request):         
         """
         #POPULATE THE API
         for dic in json_data:
@@ -64,6 +51,23 @@ class PictureAPIView(APIView):
                 picture=Picture(title=dic['title'],url=dic['url'],hdurl=dic['hdurl'],explanation=dic['explanation'])
                 picture.save()
         """
+        return self.create(request)
+    def put(self,request,id=None):
+        return self.update(request,id)
+    def delete(self,request,id):
+        return self.destroy(request,id)
+    
+
+"""
+# Create your views here.
+class PictureAPIView(APIView):
+    def get(self,request):
+        pictures=Picture.objects.all()
+        serializer=PictureSerializer(pictures,many=True)
+        return Response(serializer.data)
+
+    def post(self,request):
+
         serializer=PictureSerializer(data=request.data)
         
         if serializer.is_valid():
@@ -71,11 +75,13 @@ class PictureAPIView(APIView):
             return Response(serializer.data,status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
-
+"""
+#for the use of the id
 class PicturedetailAPIView(APIView):
-    def get_object(self,id):
+    def get_object(self,id):       
         try:
             return Picture.objects.get(id=id)
+        
         except Picture.DoesNotExist:
             return HttpResponse(status=status.HTTP_404_NOT_FOUND)
 
@@ -83,6 +89,7 @@ class PicturedetailAPIView(APIView):
         picture=self.get_object(id)
         serializer=PictureSerializer(picture)
         return Response(serializer.data)
+
 
     def put(self,request,id):
         picture=self.get_object(id)

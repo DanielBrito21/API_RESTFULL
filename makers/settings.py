@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'AstronomyPicturesApp',
     'rest_framework',
-    'django_filter'
+    'rest_framework.authtoken'
+    
 ]
 
 MIDDLEWARE = [
